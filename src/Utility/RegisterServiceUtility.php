@@ -16,6 +16,7 @@ use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use Undkonsorten\TYPO3AutoLogin\Exception\NotAllowedException;
+use Undkonsorten\TYPO3AutoLogin\Install\Service\SessionService;
 use Undkonsorten\TYPO3AutoLogin\Service\AutomaticAuthenticationService;
 
 /**
@@ -47,11 +48,30 @@ class RegisterServiceUtility
     /**
      * @throws NotAllowedException
      */
-    public static function registerAutomaticAuthenticationService(): void
+    static protected function checkApplicationContext()
     {
         if (Environment::getContext()->isProduction()) {
             throw new NotAllowedException(sprintf('Automatic login is not allowed in Production context. Current context: "%s"', Environment::getContext()), 1534842728);
         }
+    }
+
+    /**
+     * @throws NotAllowedException
+     */
+    static public function overrideInstallToolSessionService()
+    {
+        static::checkApplicationContext();
+        if (!static::isRequestTypeCli() && getenv(SessionService::TYPO3_AUTOLOGIN_INSTALL_TOOL_ENVVAR)) {
+            $GLOBALS['TYPO3_CONF_VARS']['SYS']['Objects'][\TYPO3\CMS\Install\Service\SessionService::class]['className'] = SessionService::class;
+        }
+    }
+
+    /**
+     * @throws NotAllowedException
+     */
+    static public function registerAutomaticAuthenticationService()
+    {
+        static::checkApplicationContext();
         if (false === getenv(AutomaticAuthenticationService::TYPO3_AUTOLOGIN_USERNAME_ENVVAR)) {
             static::getLogger()->notice(sprintf(
                 '%s is enabled but no username given. Please set environment variable "%s".',
